@@ -50,6 +50,10 @@ import kotlin.reflect.KClass
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.flow
 import java.util.concurrent.TimeUnit
+import android.net.Uri
+import com.google.gson.GsonBuilder
+import com.google.gson.JsonSerializer
+import com.google.gson.JsonPrimitive
 
 // The minimum android level that can use Health Connect
 const val MIN_SUPPORTED_SDK = Build.VERSION_CODES.O_MR1
@@ -198,6 +202,38 @@ class HealthConnectManager(private val context: Context) {
   sealed class ChangesMessage {
     data class NoMoreChanges(val nextChangesToken: String) : ChangesMessage()
     data class ChangeList(val changes: List<Change>) : ChangesMessage()
+  }
+
+  suspend fun exportData(uri: Uri) {
+    val start = Instant.EPOCH
+    val end = Instant.now()
+    val timeRangeFilter = TimeRangeFilter.between(start, end)
+
+    val weight = readData<WeightRecord>(timeRangeFilter)
+    val steps = readData<StepsRecord>(timeRangeFilter)
+    val heartRate = readData<HeartRateRecord>(timeRangeFilter)
+    val calories = readData<TotalCaloriesBurnedRecord>(timeRangeFilter)
+    val sessions = readData<ExerciseSessionRecord>(timeRangeFilter)
+
+    val data = mapOf(
+      "weight" to weight,
+      "steps" to steps,
+      "heartRate" to heartRate,
+      "calories" to calories,
+      "sessions" to sessions
+    )
+
+    val gson = GsonBuilder()
+      .registerTypeAdapter(Instant::class.java, JsonSerializer<Instant> { src, _, _ -> JsonPrimitive(src.toString()) })
+      .registerTypeAdapter(ZonedDateTime::class.java, JsonSerializer<ZonedDateTime> { src, _, _ -> JsonPrimitive(src.toString()) })
+      .setPrettyPrinting()
+      .create()
+
+    val jsonString = gson.toJson(data)
+
+    context.contentResolver.openOutputStream(uri)?.use { outputStream ->
+      outputStream.write(jsonString.toByteArray())
+    }
   }
 }
 

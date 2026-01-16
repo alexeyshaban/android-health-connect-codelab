@@ -25,6 +25,7 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material.MaterialTheme
 import androidx.compose.material.Text
+import androidx.compose.material.Button
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.getValue
@@ -54,6 +55,7 @@ fun WelcomeScreen(
     healthConnectAvailability: HealthConnectAvailability,
     onResumeAvailabilityCheck: () -> Unit,
     lifecycleOwner: LifecycleOwner = LocalLifecycleOwner.current,
+    onExportClick: () -> Unit = {},
 ) {
   val currentOnAvailabilityCheck by rememberUpdatedState(onResumeAvailabilityCheck)
 
@@ -97,7 +99,13 @@ fun WelcomeScreen(
     )
     Spacer(modifier = Modifier.height(32.dp))
     when (healthConnectAvailability) {
-      HealthConnectAvailability.INSTALLED -> InstalledMessage()
+      HealthConnectAvailability.INSTALLED -> {
+          InstalledMessage()
+          Spacer(modifier = Modifier.height(32.dp))
+          Button(onClick = onExportClick) {
+              Text("Export Data")
+          }
+      }
       HealthConnectAvailability.NOT_INSTALLED -> NotInstalledMessage()
       HealthConnectAvailability.NOT_SUPPORTED -> NotSupportedMessage()
     }

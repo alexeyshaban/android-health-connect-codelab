@@ -16,6 +16,7 @@
 package com.example.healthconnect.codelab.presentation.navigation
 
 import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.material.ScaffoldState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -55,10 +56,27 @@ fun HealthConnectNavigation(
   NavHost(navController = navController, startDestination = Screen.WelcomeScreen.route) {
     val availability by healthConnectManager.availability
     composable(Screen.WelcomeScreen.route) {
+      val exportLauncher = rememberLauncherForActivityResult(
+        ActivityResultContracts.CreateDocument("application/json")
+      ) { uri ->
+        if (uri != null) {
+          scope.launch {
+            try {
+              healthConnectManager.exportData(uri)
+            } catch (e: Exception) {
+              showExceptionSnackbar(scaffoldState, scope, e)
+            }
+          }
+        }
+      }
+
       WelcomeScreen(
         healthConnectAvailability = availability,
         onResumeAvailabilityCheck = {
           healthConnectManager.checkAvailability()
+        },
+        onExportClick = {
+          exportLauncher.launch("health_connect_data.json")
         }
       )
     }

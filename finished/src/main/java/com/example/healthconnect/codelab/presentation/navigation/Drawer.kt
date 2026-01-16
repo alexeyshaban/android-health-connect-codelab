@@ -58,6 +58,7 @@ fun Drawer(
     scope: CoroutineScope,
     scaffoldState: ScaffoldState,
     navController: NavController,
+    onExportClick: () -> Unit = {},
 ) {
   val navBackStackEntry by navController.currentBackStackEntryAsState()
   val currentRoute = navBackStackEntry?.destination?.route
@@ -133,6 +134,22 @@ fun Drawer(
     ) {
       Text(
         text = stringResource(R.string.settings),
+        style = MaterialTheme.typography.h5,
+        color = MaterialTheme.colors.onBackground
+      )
+    }
+    Row(
+      modifier = Modifier
+          .fillMaxWidth()
+          .clickable(
+              onClick = onExportClick
+          )
+          .height(48.dp)
+          .padding(start = 16.dp),
+      verticalAlignment = Alignment.CenterVertically
+    ) {
+      Text(
+        text = "Export Data",
         style = MaterialTheme.typography.h5,
         color = MaterialTheme.colors.onBackground
       )

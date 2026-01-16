@@ -16,6 +16,9 @@
 package com.example.healthconnect.codelab.presentation
 
 import android.annotation.SuppressLint
+import android.content.Intent
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.material.Icon
 import androidx.compose.material.IconButton
 import androidx.compose.material.Scaffold
@@ -39,6 +42,9 @@ import com.example.healthconnect.codelab.presentation.navigation.Drawer
 import com.example.healthconnect.codelab.presentation.navigation.HealthConnectNavigation
 import com.example.healthconnect.codelab.presentation.navigation.Screen
 import com.example.healthconnect.codelab.presentation.theme.HealthConnectTheme
+import androidx.health.connect.client.HealthConnectClient
+import androidx.compose.ui.platform.LocalContext
+import com.example.healthconnect.codelab.showExceptionSnackbar
 import kotlinx.coroutines.launch
 
 const val TAG = "Health Connect Codelab"
@@ -47,11 +53,26 @@ const val TAG = "Health Connect Codelab"
 @Composable
 fun HealthConnectApp(healthConnectManager: HealthConnectManager) {
   HealthConnectTheme {
+    val context = LocalContext.current
     val scaffoldState = rememberScaffoldState()
     val navController = rememberNavController()
     val scope = rememberCoroutineScope()
     val navBackStackEntry by navController.currentBackStackEntryAsState()
     val currentRoute = navBackStackEntry?.destination?.route
+
+    val exportLauncher = rememberLauncherForActivityResult(
+        ActivityResultContracts.CreateDocument("application/json")
+    ) { uri ->
+        if (uri != null) {
+            scope.launch {
+                try {
+                    healthConnectManager.exportData(uri)
+                } catch (e: Exception) {
+                    showExceptionSnackbar(scaffoldState, scope, e)
+                }
+            }
+        }
+    }
 
     val availability by healthConnectManager.availability
 
@@ -91,7 +112,26 @@ fun HealthConnectApp(healthConnectManager: HealthConnectManager) {
           Drawer(
             scope = scope,
             scaffoldState = scaffoldState,
-            navController = navController
+            navController = navController,
+            onExportClick = {
+                scope.launch {
+                    val permissions = setOf(
+                        androidx.health.connect.client.permission.HealthPermission.getReadPermission(androidx.health.connect.client.records.WeightRecord::class),
+                        androidx.health.connect.client.permission.HealthPermission.getReadPermission(androidx.health.connect.client.records.StepsRecord::class),
+                        androidx.health.connect.client.permission.HealthPermission.getReadPermission(androidx.health.connect.client.records.HeartRateRecord::class),
+                        androidx.health.connect.client.permission.HealthPermission.getReadPermission(androidx.health.connect.client.records.TotalCaloriesBurnedRecord::class),
+                        androidx.health.connect.client.permission.HealthPermission.getReadPermission(androidx.health.connect.client.records.ExerciseSessionRecord::class)
+                    )
+                    if (healthConnectManager.hasAllPermissions(permissions)) {
+                        exportLauncher.launch("health_connect_data.json")
+                    } else {
+                        scaffoldState.snackbarHostState.showSnackbar("Permissions not granted")
+                        val settingsIntent = Intent()
+                        settingsIntent.action = HealthConnectClient.ACTION_HEALTH_CONNECT_SETTINGS
+                        context.startActivity(settingsIntent)
+                    }
+                }
+            }
           )
         }
       },
